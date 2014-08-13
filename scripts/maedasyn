@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+
+import numpy as np
+
+import maedasyn.synth as msyn
+
+synth = msyn.Synth()
+
+target1 = msyn.FParam('uw', f0=130.0, glottal_aperture=0.2)
+target2 = msyn.FParam('iy', f0=100.0, glottal_aperture=0.2)
+n = 80 - 20
+step = (target2 - target1) / n
+
+fname = 'resources/mtest.wav'
+with open(fname, 'wb') as soundfile:
+    for i in np.arange(100):
+        if i <= 20:
+            params = msyn.FParam(target1)
+        elif i >= 80:
+            params = msyn.FParam(target2)
+        else:
+            params = target1 + (step * (i-20.0))
+        params.time = synth.time_for_frameidx(i)
+        synth.synthesize(params, 2)
+        soundfile.write(synth.buffer)
+
+
