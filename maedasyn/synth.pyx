@@ -84,9 +84,10 @@ cdef class Synth(object):
     def __cinit__(self):
         self._bufsize = np.floor(ms.FRAME_DUR * ms.smpfrq)
         self._buffer = np.zeros(self._bufsize, dtype=np.int16)
-        self.synthesize(FParam(), 1)  # Initialize
+        self.synthesize(FrameParam(), 1)  # Initialize
 
     def synthesize(self, params, mode):
+        self._buffer = np.zeros(self._bufsize * (mode - 1), dtype=np.int16)
         synth_frame(params.as_ndarray(), self._buffer, mode)
 
     def time_for_frameidx(self, idx):
@@ -96,10 +97,10 @@ cdef class Synth(object):
         
 # You can override one or more defaults identified by name, e.g.
 #
-# my_uw = FParam('uw', lip_aperture=1.2)
+# my_uw = FrameParam('uw', lip_aperture=1.2)
 #
-cdef class FParam(object):
-    '''FParam parameters for Maeda synthesizer.'''
+cdef class FrameParam(object):
+    '''FrameParam parameters for Maeda synthesizer.'''
     cdef public float time
     cdef public float f0
     cdef public float glottal_aperture
@@ -130,22 +131,22 @@ cdef class FParam(object):
     # These are fields for which we have defaults for various vowels.
     vowel_fields = fields[3:]
 
-    # Construct a FParam. If name is given, use default specifications for various
+    # Construct a FrameParam. If name is given, use default specifications for various
     # vowels. You can specifiy the value of parameters with keyword arguments, the names
-    # of which are the values of FParam.fields. These keyword arguments override defaults
+    # of which are the values of FrameParam.fields. These keyword arguments override defaults
     # provided by name.
     #
-    # uw = FParam('uw')
-    # uw = FParam('uw', lip_aperture=1.3)   # override 'uw' lip_aperture
+    # uw = FrameParam('uw')
+    # uw = FrameParam('uw', lip_aperture=1.3)   # override 'uw' lip_aperture
     def __init__(self, name=None, **kwargs):
 
         # Default to 0.0 values
-        for idx,articulator in enumerate(FParam.fields):
+        for idx,articulator in enumerate(FrameParam.fields):
             setattr(self, articulator, 0.0)
 
-        # Overwrite defaults by cloning from another FParam or from default specifications.
-        if type(name) is FParam:
-            for idx,field in enumerate(FParam.fields):
+        # Overwrite defaults by cloning from another FrameParam or from default specifications.
+        if type(name) is FrameParam:
+            for idx,field in enumerate(FrameParam.fields):
                 setattr(self, field, getattr(name, field))
         elif name in ('aa', 'uw', 'iy', 'ey', 'eh', 'ah', 'ao', 'ow', 'iw', 'ew', 'oe'):
             if name == 'aa':
@@ -171,7 +172,7 @@ cdef class FParam(object):
             elif name == 'oe':
                 aspec = &ms.oe[0]
     
-            for idx,articulator in enumerate(FParam.vowel_fields):
+            for idx,articulator in enumerate(FrameParam.vowel_fields):
                 setattr(self, articulator, aspec[idx])
 
         # Finally, overwrite existing values with keyword values.
@@ -181,55 +182,55 @@ cdef class FParam(object):
     def as_ndarray(self):
         '''Convert parameter attributes to an ndarray that the C code can use.'''
         a = np.ndarray([len(self.fields)], dtype=np.float32)
-        for idx,field in enumerate(FParam.fields):
+        for idx,field in enumerate(FrameParam.fields):
             a[idx] = getattr(self, field)
         return a
 
-    # Override addition. If we are adding another FParam, add the corresponding
+    # Override addition. If we are adding another FrameParam, add the corresponding
     # field. If we are adding a number, add that number to all the fields.
     def __add__(self, other):
-        result = FParam(self)
-        if type(other) is FParam:
-            for idx,field in enumerate(FParam.fields):
+        result = FrameParam(self)
+        if type(other) is FrameParam:
+            for idx,field in enumerate(FrameParam.fields):
                 setattr(result, field, getattr(self, field) + getattr(other, field))
         else:    # should be a number
-            for idx,field in enumerate(FParam.fields):
+            for idx,field in enumerate(FrameParam.fields):
                 setattr(result, field, getattr(self, field) + other)
         return result
 
-    # Override subtraction. If we are subtracting another FParam, subtract the corresponding
+    # Override subtraction. If we are subtracting another FrameParam, subtract the corresponding
     # field. If we are subtracting a number, subtract that number from all the fields.
     def __sub__(self, other):
-        result = FParam(self)
-        if type(other) is FParam:
-            for idx,field in enumerate(FParam.fields):
+        result = FrameParam(self)
+        if type(other) is FrameParam:
+            for idx,field in enumerate(FrameParam.fields):
                 setattr(result, field, getattr(self, field) - getattr(other, field))
         else:    # should be a number
-            for idx,field in enumerate(FParam.fields):
+            for idx,field in enumerate(FrameParam.fields):
                 setattr(result, field, getattr(self, field) - other)
         return result
 
-    # Override multiplication. If we are multiplying another FParam, multiply the corresponding
+    # Override multiplication. If we are multiplying another FrameParam, multiply the corresponding
     # field. If we are multiplying by a number, multiply all the fields by that number.
     def __mul__(self, other):
-        result = FParam(self)
-        if type(other) is FParam:
-            for idx,field in enumerate(FParam.fields):
+        result = FrameParam(self)
+        if type(other) is FrameParam:
+            for idx,field in enumerate(FrameParam.fields):
                 setattr(result, field, getattr(self, field) * getattr(other, field))
         else:    # should be a number
-            for idx,field in enumerate(FParam.fields):
+            for idx,field in enumerate(FrameParam.fields):
                 setattr(result, field, getattr(self, field) * other)
         return result
 
-    # Override division. If we are dividing another FParam, divide the corresponding
+    # Override division. If we are dividing another FrameParam, divide the corresponding
     # field. If we are dividing by a number, divide all the fields by that number.
     def __div__(self, other):
-        result = FParam(self)
-        if type(other) is FParam:
-            for idx,field in enumerate(FParam.fields):
+        result = FrameParam(self)
+        if type(other) is FrameParam:
+            for idx,field in enumerate(FrameParam.fields):
                 setattr(result, field, getattr(self, field) / getattr(other, field))
         else:    # should be a number
-            for idx,field in enumerate(FParam.fields):
+            for idx,field in enumerate(FrameParam.fields):
                 setattr(result, field, getattr(self, field) / other)
         return result
 
