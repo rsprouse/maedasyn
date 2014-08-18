@@ -57,7 +57,7 @@ def get_ivt():
 def get_evt():
     evt = []
     for idx in np.arange(ms.NPAR):
-        evt.append( {"x": ms.ivt[idx].x, "y": ms.ivt[idx].y} )
+        evt.append( {"x": ms.evt[idx].x, "y": ms.evt[idx].y} )
     return evt
 
 ###### End of C array access #####
