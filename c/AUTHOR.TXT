@@ -1,0 +1,8 @@
+The files in this directory are believed to be based on code originally by
+Shinji Maeada, and described in:
+
+Maeda, Shinji (1982) A digital simulation method of vocal-tract system.  Speech Communication, 1, 199-229.
+
+Unknown authors possibly have made changes to the original code, and we
+welcome clarification of authorship.
+
