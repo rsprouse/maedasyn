@@ -87,7 +87,7 @@ cdef class Synth(object):
         self.synthesize(FrameParam(), 1)  # Initialize
 
     def synthesize(self, params, mode):
-        self._buffer = np.zeros(self._bufsize * (mode - 1), dtype=np.int16)
+        #self._buffer = np.zeros(self._bufsize * mode, dtype=np.int16)
         synth_frame(params.as_ndarray(), self._buffer, mode)
 
     def time_for_frameidx(self, idx):
