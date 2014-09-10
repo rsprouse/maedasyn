@@ -7,6 +7,7 @@ matplotlib.use('WXAgg')
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.backends.backend_wx import NavigationToolbar2Wx
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 
 import wx
 import pyaudio
@@ -16,8 +17,8 @@ from paramdraw.paramdraw import ParamSpec
 from paramdraw.paramdraw import ParamSpecManager
 
 class AxesWindow(wx.Window):
-    def __init__(self, *args, **kwargs):
-        wx.Window.__init__(self, *args, **kwargs)
+    def __init__(self, parent, *args, **kwargs):
+        wx.Window.__init__(self, parent, *args, **kwargs)
         self.figure = Figure()
         self.draw_axes = self.figure.add_subplot(211)
         self.show_axes = self.figure.add_subplot(212)
@@ -29,8 +30,8 @@ class AxesWindow(wx.Window):
         self.Fit()
 
 class SelectWindow(wx.Window):
-    def __init__(self, *args, **kwargs):
-        wx.Window.__init__(self, *args, **kwargs)
+    def __init__(self, parent, *args, **kwargs):
+        wx.Window.__init__(self, parent, *args, **kwargs)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(self.sizer)
@@ -43,6 +44,28 @@ class SelectWindow(wx.Window):
         self.sizer.Add(btn, 0, wx.BOTTOM, border)
         return btn
 
+class AnimationWindow(wx.Window):
+    def __init__(self, parent, *args, **kwargs):
+        wx.Window.__init__(self, parent, *args, **kwargs)
+        self.figure = Figure()
+        self.mouth_axes = self.figure.add_subplot(211)
+        self.ivt_line = Line2D([], [])
+        self.evt_line = Line2D([], [])
+        self.mouth_axes.add_line(self.ivt_line)
+        self.mouth_axes.add_line(self.evt_line)
+        self.mouth_axes.set_xlim(0, 20)
+        self.mouth_axes.set_ylim(0, 20)
+        self.lip_axes = self.figure.add_subplot(212)
+        self.lip_axes.set_xlim(0, 20)
+        self.lip_axes.set_ylim(0, 20)
+# TODO: I think the -1 in the next line could/should be wx.ID_ANY
+        self.canvas = FigureCanvas(self, -1, self.figure)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.canvas, 0, wx.FIXED_MINSIZE)
+        self.sizer.SetMinSize(wx.Size(50, 50))
+        self.SetSizer(self.sizer)
+        self.Fit()
+
 class MainFrame(wx.Frame):
 
     def __init__(self, title, *args, **kwargs):
@@ -51,6 +74,7 @@ class MainFrame(wx.Frame):
 
         self.w_axes = AxesWindow(self)
         self.w_select = SelectWindow(self)
+        self.w_animation = AnimationWindow(self)
 
         # Eventually these will load externally from parameter files.
         grid_x=np.arange(0, 2.005, 0.005)
@@ -76,7 +100,7 @@ class MainFrame(wx.Frame):
         self.paramspec_manager = psm
         psm.show()
 
-        self.synth = Synth(paramspec_manager=psm)
+        self.synth = Synth(paramspec_manager=psm, animation=self.w_animation)
 
         menuBar = wx.MenuBar()
         menu = wx.Menu()
@@ -91,6 +115,7 @@ class MainFrame(wx.Frame):
         b = 10
         hsizer1.Add(self.w_select)
         hsizer1.Add(self.w_axes, 1, wx.EXPAND | wx.LEFT | wx.TOP | wx.BOTTOM, b)
+        hsizer1.Add(self.w_animation, 0, wx.ALIGN_RIGHT, b)
 
         self.SetSizer(hsizer1)
 
@@ -132,8 +157,9 @@ class MainFrame(wx.Frame):
 
 class Synth(object):
     """The synthesizer and audio streamer."""
-    def __init__(self, paramspec_manager, *args, **kwargs):
+    def __init__(self, paramspec_manager, animation, *args, **kwargs):
         self.paramspec_manager = paramspec_manager
+        self.animation = animation
         self.pa = pyaudio.PyAudio()
         self.synth = msyn.Synth()
         self.frames = []
@@ -148,15 +174,26 @@ class Synth(object):
         d = dict.fromkeys(self.paramspec_manager.paramspecs.keys(), np.nan)
         d['time'] = np.nan
         frames = []
+        param_y = {}
         print "Creating frame params."
+        for param in self.paramspec_manager.paramspecs:
+            param_y[param] = self.paramspec_manager.paramspecs[param].interp_y
         for idx,x in enumerate(self.paramspec_manager.paramspecs['f0'].grid_x):
             d['time'] = x
             for p in self.paramspec_manager.paramspecs:
-                d[p] = self.paramspec_manager.paramspecs[p].interp_y[idx]
+                d[p] = param_y[p][idx]
+                #d[p] = self.paramspec_manager.paramspecs[p].interp_y[idx]
             frames.append(msyn.FrameParam(**d))
         print "Synthesizing frames."
         for frame in frames:
             self.synth.synthesize(frame, 2)
+            self.animation.ivt_line.set_xdata(self.synth.ivt_x)
+            self.animation.ivt_line.set_ydata(self.synth.ivt_y)
+            self.animation.evt_line.set_xdata(self.synth.evt_x)
+            self.animation.evt_line.set_ydata(self.synth.evt_y)
+            print "x: ", self.synth.ivt_x
+            print "y: ", self.synth.ivt_y
+            self.animation.figure.canvas.draw()
             self.stream.write(self.synth.buffer.astype(np.float32).tostring())
 
 
