@@ -21,12 +21,9 @@ setup(
   #ext_package='klatt_wrap',
   ext_modules = ext_modules,
   packages = ['maedasyn'],
-#  scripts = [
-#    'scripts/klattsyn.py',
-#    'scripts/klattsyn_interactive.py',
-#    'scripts/doc2klp.py',
-#    'scripts/wxklsyn.pyw'
-#  ],
+  scripts = [
+    'scripts/maedasyn_wx'
+  ],
   classifiers = [
     'Intended Audience :: Science/Research',
     'Topic :: Scientific/Engineering',
