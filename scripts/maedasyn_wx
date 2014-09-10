@@ -1,0 +1,169 @@
+#!/usr/bin/env python
+
+import numpy as np
+import matplotlib
+matplotlib.use('WXAgg')
+
+from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+from matplotlib.backends.backend_wx import NavigationToolbar2Wx
+from matplotlib.figure import Figure
+
+import wx
+import pyaudio
+import maedasyn.synth as msyn
+
+from paramdraw.paramdraw import ParamSpec
+from paramdraw.paramdraw import ParamSpecManager
+
+class AxesWindow(wx.Window):
+    def __init__(self, *args, **kwargs):
+        wx.Window.__init__(self, *args, **kwargs)
+        self.figure = Figure()
+        self.draw_axes = self.figure.add_subplot(211)
+        self.show_axes = self.figure.add_subplot(212)
+# TODO: I think the -1 in the next line could/should be wx.ID_ANY
+        self.canvas = FigureCanvas(self, -1, self.figure)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
+        self.SetSizer(self.sizer)
+        self.Fit()
+
+class SelectWindow(wx.Window):
+    def __init__(self, *args, **kwargs):
+        wx.Window.__init__(self, *args, **kwargs)
+
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.SetSizer(self.sizer)
+
+        self.buttons = []
+
+    def add_button(self, text, border):
+        btn = wx.Button(self, wx.ID_ANY, text, (-1, -1), wx.DefaultSize)
+        self.buttons.append(btn)
+        self.sizer.Add(btn, 0, wx.BOTTOM, border)
+        return btn
+
+class MainFrame(wx.Frame):
+
+    def __init__(self, title, *args, **kwargs):
+        wx.Frame.__init__(self, None, title=title, pos=(150,150), size=(1000,600), *args, **kwargs)
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
+
+        self.w_axes = AxesWindow(self)
+        self.w_select = SelectWindow(self)
+
+        # Eventually these will load externally from parameter files.
+        grid_x=np.arange(0, 2.005, 0.005)
+        grid_neg3_to_3 = np.linspace(-3.0, 3.0, 61)
+        grid_neg2_to_0 = np.linspace(-2.0, 0.0, 21)
+        grid_neg2_to_2 = np.linspace(-2.0, 2.0, 41)
+        grid_neg1_to_1 = np.linspace(-1.0, 1.0, 41)
+        grid_0_to_2 = np.linspace(0.0, 2.0, 5)
+        pspecs = {
+            'f0': ParamSpec('f0', grid_x, np.arange(70, 500, 10), default_y=120, yfmt="d", lineprops={'linestyle': '-', 'color': 'blue'}),
+            'glottal_aperture': ParamSpec('glottal_aperture', grid_x, grid_neg2_to_2, default_y=0.2, lineprops={'linestyle': '--', 'color': 'green'}),
+            'jaw_position': ParamSpec('jaw_position', grid_x, grid_neg3_to_3, lineprops={'linestyle': '-.', 'color': 'magenta'}),
+            'dorsum_position': ParamSpec('dorsum_position', grid_x, grid_neg3_to_3, lineprops={'linestyle': ':', 'color': 'black'}),
+            'dorsum_shape': ParamSpec('dorsum_shape', grid_x, grid_0_to_2, default_y=1.0, lineprops={'linestyle': '-', 'color': 'red'}),
+            'apex_position': ParamSpec('apex_position', grid_x, grid_neg2_to_0, default_y=2.0, lineprops={'linestyle': '--', 'color': 'blue'}),
+            'lip_aperture': ParamSpec('lip_aperture', grid_x, grid_neg1_to_1, lineprops={'linestyle': '-.', 'color': 'green'}),
+            'lip_protrusion': ParamSpec('lip_protrusion', grid_x, grid_neg1_to_1, lineprops={'linestyle': ':', 'color': 'magenta'}),
+            'larynx_height': ParamSpec('larynx_height', grid_x, grid_neg2_to_2, default_y=0.0, lineprops={'linestyle': '-', 'color': 'black'}),
+            'nasal_coupling': ParamSpec('nasal_coupling', grid_x, grid_neg2_to_2, default_y=0.0, lineprops={'linestyle': '--', 'color': 'red'})
+        }
+        psm = ParamSpecManager(pspecs, self.w_axes.draw_axes, self.w_axes.show_axes, motion_callback=self.OnMouseMotion)
+        psm.paramspec = pspecs['f0']
+        self.paramspec_manager = psm
+        psm.show()
+
+        self.synth = Synth(paramspec_manager=psm)
+
+        menuBar = wx.MenuBar()
+        menu = wx.Menu()
+        m_exit = menu.Append(wx.ID_EXIT, "E&xit\tAlt-X", "Close window and exit program.")
+        self.Bind(wx.EVT_MENU, self.OnClose, m_exit)
+        menuBar.Append(menu, "&File")
+        self.SetMenuBar(menuBar)
+
+        self.statusbar = self.CreateStatusBar()
+
+        hsizer1 = wx.BoxSizer(wx.HORIZONTAL)
+        b = 10
+        hsizer1.Add(self.w_select)
+        hsizer1.Add(self.w_axes, 1, wx.EXPAND | wx.LEFT | wx.TOP | wx.BOTTOM, b)
+
+        self.SetSizer(hsizer1)
+
+        border = 5
+        for articulator in pspecs.keys():
+            btn = self.w_select.add_button(articulator, border)
+            self.Bind(wx.EVT_BUTTON, self.OnButtonPress, btn)
+        play_btn = self.w_select.add_button('play', border)
+        self.Bind(wx.EVT_BUTTON, self.synth.play, play_btn)
+    
+    def OnMouseMotion(self, event):
+        if event.inaxes == self.paramspec_manager.pdx.ax:
+            try:
+                paramspec = self.paramspec_manager.pdx.paramspec
+                x = paramspec.snap_to_grid(x=event.xdata)
+                y = paramspec.snap_to_grid(y=event.ydata)
+                text = "x: " + paramspec.xfmt.format(x) + " y: " + paramspec.yfmt.format(y)
+                self.statusbar.SetStatusText(text, 0)
+                self.paramspec_manager.pdx.on_mouse_motion({'msg': text, 'x': x, 'y': y})
+            except AttributeError:    # paramspec == None (no parameter currently being drawn)
+                pass
+
+    def OnButtonPress(self, event):
+        param = event.GetEventObject().GetLabelText()
+        self.paramspec_manager.select_paramspec(param)
+        
+    def OnClose(self, event):
+# TODO: remove following lines to re-enable dialog
+        self.Destroy()
+        exit()
+
+        dlg = wx.MessageDialog(self,
+            "Do you really want to close this application?",
+            "Confirm Exit", wx.OK|wx.CANCEL|wx.ICON_QUESTION)
+        result = dlg.ShowModal()
+        dlg.Destroy()
+        if result == wx.ID_OK:
+            self.Destroy()
+
+class Synth(object):
+    """The synthesizer and audio streamer."""
+    def __init__(self, paramspec_manager, *args, **kwargs):
+        self.paramspec_manager = paramspec_manager
+        self.pa = pyaudio.PyAudio()
+        self.synth = msyn.Synth()
+        self.frames = []
+        blocksize = 16
+        self.stream = self.pa.open(format=pyaudio.paFloat32,
+                                   channels=1,
+                                   rate=10000,
+                                   output=True)
+
+    def play(self, event):
+        """Create frames from interpolated parameters and play."""
+        d = dict.fromkeys(self.paramspec_manager.paramspecs.keys(), np.nan)
+        d['time'] = np.nan
+        frames = []
+        print "Creating frame params."
+        for idx,x in enumerate(self.paramspec_manager.paramspecs['f0'].grid_x):
+            d['time'] = x
+            for p in self.paramspec_manager.paramspecs:
+                d[p] = self.paramspec_manager.paramspecs[p].interp_y[idx]
+            frames.append(msyn.FrameParam(**d))
+        print "Synthesizing frames."
+        for frame in frames:
+            self.synth.synthesize(frame, 2)
+            self.stream.write(self.synth.buffer.astype(np.float32).tostring())
+
+
+
+if __name__ == '__main__':
+    app = wx.App(False)
+    main = MainFrame(title='SynthParam')
+
+    main.Show()
+    app.MainLoop()
