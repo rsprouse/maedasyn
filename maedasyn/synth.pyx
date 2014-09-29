@@ -77,9 +77,21 @@ cdef class Synth(object):
     property ivt:
         def __get__(self):
             return get_ivt()
+    property ivt_x:
+        def __get__(self):
+            return [ms.ivt[idx].x for idx in np.arange(ms.NPAR)]
+    property ivt_y:
+        def __get__(self):
+            return [ms.ivt[idx].y for idx in np.arange(ms.NPAR)]
     property evt:
         def __get__(self):
             return get_evt()
+    property evt_x:
+        def __get__(self):
+            return [ms.evt[idx].x for idx in np.arange(ms.NPAR)]
+    property evt_y:
+        def __get__(self):
+            return [ms.evt[idx].y for idx in np.arange(ms.NPAR)]
 
     def __cinit__(self):
         self._bufsize = np.floor(ms.FRAME_DUR * ms.smpfrq)
