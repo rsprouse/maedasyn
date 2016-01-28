@@ -50,13 +50,13 @@ def synth_frame(
 
 def get_ivt():
     ivt = []
-    for idx in np.arange(ms.NPAR):
+    for idx in np.arange(ms.NP):
         ivt.append( {"x": ms.ivt[idx].x, "y": ms.ivt[idx].y} )
     return ivt
 
 def get_evt():
     evt = []
-    for idx in np.arange(ms.NPAR):
+    for idx in np.arange(ms.NP):
         evt.append( {"x": ms.evt[idx].x, "y": ms.evt[idx].y} )
     return evt
 
@@ -79,19 +79,19 @@ cdef class Synth(object):
             return get_ivt()
     property ivt_x:
         def __get__(self):
-            return [ms.ivt[idx].x for idx in np.arange(ms.NPAR)]
+            return [ms.ivt[idx].x for idx in np.arange(ms.NP)]
     property ivt_y:
         def __get__(self):
-            return [ms.ivt[idx].y for idx in np.arange(ms.NPAR)]
+            return [ms.ivt[idx].y for idx in np.arange(ms.NP)]
     property evt:
         def __get__(self):
             return get_evt()
     property evt_x:
         def __get__(self):
-            return [ms.evt[idx].x for idx in np.arange(ms.NPAR)]
+            return [ms.evt[idx].x for idx in np.arange(ms.NP)]
     property evt_y:
         def __get__(self):
-            return [ms.evt[idx].y for idx in np.arange(ms.NPAR)]
+            return [ms.evt[idx].y for idx in np.arange(ms.NP)]
 
     def __cinit__(self):
         self._bufsize = np.floor(ms.FRAME_DUR * ms.smpfrq)
