@@ -31,7 +31,11 @@ cdef extern from '../c/lam_lib.c':
     pass
 
 cdef extern from '../c/vsyn_lib.c':
-    pass
+    int M4
+    int NVRS_WAL
+    float *alph
+    float *beta
+    float *u_wal
 
 cdef extern from '../c/synthesize.c':
     void synth_frame(float *params, short *buffer, short mode)

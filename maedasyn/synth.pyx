@@ -60,6 +60,36 @@ def get_evt():
         evt.append( {"x": ms.evt[idx].x, "y": ms.evt[idx].y} )
     return evt
 
+def get_alph():
+    alph = []
+    for idx in np.arange(ms.M4):
+        alph.append(ms.alph[idx])
+    return alph
+
+def set_alph(alph):
+    for idx in np.arange(ms.M4):
+        ms.alph[idx] = alph[idx]
+    
+def get_beta():
+    beta = []
+    for idx in np.arange(ms.M4):
+        beta.append(ms.beta[idx])
+    return beta
+
+def set_beta(beta):
+    for idx in np.arange(ms.M4):
+        ms.beta[idx] = beta[idx]
+    
+def get_u_wal():
+    u_wal = []
+    for idx in np.arange(ms.NVRS_WAL):
+        u_wal.append(ms.u_wal[idx])
+    return u_wal
+
+def set_u_wal(u_wal):
+    for idx in np.arange(ms.NVRS_WAL):
+        ms.u_wal[idx] = u_wal[idx]
+
 ###### End of C array access #####
 
 ###### End of C-style API #####
@@ -92,6 +122,24 @@ cdef class Synth(object):
     property evt_y:
         def __get__(self):
             return [ms.evt[idx].y for idx in np.arange(ms.NP)]
+    property alph:
+        def __get__(self):
+            return get_alph()
+        def __set__(self, vals):
+            assert(len(vals) == len(get_alph()))
+            set_alph(vals)
+    property beta:
+        def __get__(self):
+            return get_beta()
+        def __set__(self, vals):
+            assert(len(vals) == len(get_beta()))
+            set_beta(vals)
+    property u_wal:
+        def __get__(self):
+            return get_u_wal()
+        def __set__(self, vals):
+            assert(len(vals) == len(get_u_wal()))
+            set_u_wal(vals)
 
     def __cinit__(self):
         self._bufsize = np.floor(ms.FRAME_DUR * ms.smpfrq)
