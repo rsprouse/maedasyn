@@ -14,8 +14,8 @@ cdef extern from '../c/vtconfig.h':
 cdef extern from '../c/lam_lib.h':
     int NP
     ctypedef struct float2D:
-        short x
-        short y
+        float x
+        float y
 
     float2D *ivt
     float2D *evt
