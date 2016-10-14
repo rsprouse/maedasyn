@@ -9,7 +9,12 @@ cdef extern from '../c/always.h':
     pass
 
 cdef extern from '../c/vtconfig.h':
-    pass
+    short nss
+    ctypedef struct area_function:
+        float A
+        float x
+    area_function *afvt
+    area_function *afnt
 
 cdef extern from '../c/lam_lib.h':
     int NP

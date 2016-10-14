@@ -60,6 +60,18 @@ def get_evt():
         evt.append( {"x": ms.evt[idx].x, "y": ms.evt[idx].y} )
     return evt
 
+def get_afvt():
+    afvt = []
+    for idx in np.arange(ms.nss):
+        afvt.append( {"A": ms.afvt[idx].A, "x": ms.afvt[idx].x} )
+    return afvt
+
+def get_afnt():
+    afnt = []
+    for idx in np.arange(13):
+        afnt.append( {"A": ms.afnt[idx].A, "x": ms.afnt[idx].x} )
+    return afnt
+
 def get_alph():
     alph = []
     for idx in np.arange(ms.M4):
@@ -122,6 +134,24 @@ cdef class Synth(object):
     property evt_y:
         def __get__(self):
             return [ms.evt[idx].y for idx in np.arange(ms.NP)]
+    property afvt:
+        def __get__(self):
+            return get_afvt()
+    property afvt_A:
+        def __get__(self):
+            return [ms.afvt[idx].A for idx in np.arange(ms.nss)]
+    property afvt_x:
+        def __get__(self):
+            return [ms.afvt[idx].x for idx in np.arange(ms.nss)]
+    property afnt:
+        def __get__(self):
+            return get_afnt()
+    property afnt_A:
+        def __get__(self):
+            return [ms.afnt[idx].A for idx in np.arange(13)]
+    property afnt_x:
+        def __get__(self):
+            return [ms.afnt[idx].x for idx in np.arange(13)]
     property alph:
         def __get__(self):
             return get_alph()
